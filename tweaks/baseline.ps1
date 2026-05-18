@@ -316,7 +316,7 @@ function Reset-StartMenuLayout {
         Write-Host "INFO: Restarting Explorer to refresh Start menu and taskbar."
 
         try {
-            Stop-Process -Name "explorer" -Force -ErrorAction Stop
+            Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
             Start-Process "explorer.exe"
             Write-Host "PASS: Explorer restarted."
         } catch {
