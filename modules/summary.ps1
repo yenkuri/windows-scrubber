@@ -199,7 +199,7 @@ function Invoke-ScrubberSummary {
     if ($script:SearchIndexingOptimizationAttempted) {
         Write-SummaryItem -Status "INFO" -Message "Windows Search indexing optimisation attempted"
     } else {
-        Write-SummaryItem -Status "INFO" -Message "Windows Search indexing optimisation did not run"
+        Write-SummaryItem -Status "INFO" -Message "Windows Search indexing optimisation skipped; no non-system fixed drives found"
     }
     
     $cloudContentPolicy = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -ErrorAction SilentlyContinue
