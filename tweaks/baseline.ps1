@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $script:StartMenuCleanupAttempted = $false
 $script:BaselineStoreBloatCleanupRan = $false
+$script:DesktopShortcutCleanupAttempted = $false
 
 function Test-IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -516,6 +517,84 @@ function Set-ChromeDefaults {
             Write-Host "INFO: Opened Default Apps settings for manual confirmation."
         } catch {
             Write-Skip "Could not open Default Apps settings: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Set-ZeroWinDesktop {
+    Invoke-Tweak "Set ZeroWin desktop" {
+        $WallpaperUrl = "https://raw.githubusercontent.com/r4kk0/zerowin-bootstrap/main/assets/wallpaper.png"
+        $wallpaperFolder = Join-Path $env:TEMP "zerowin-bootstrap"
+        $wallpaperPath = Join-Path $wallpaperFolder "wallpaper.png"
+
+        Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideIcons" -Value 1
+        Write-Host "PASS: Desktop icons hidden for current user."
+
+        $script:DesktopShortcutCleanupAttempted = $true
+        $desktopPaths = @(
+            [Environment]::GetFolderPath("Desktop"),
+            [Environment]::GetFolderPath("CommonDesktopDirectory")
+        )
+
+        foreach ($desktopPath in $desktopPaths) {
+            if (-not $desktopPath -or -not (Test-Path $desktopPath)) {
+                Write-Host "INFO: Desktop path does not exist: $desktopPath"
+                continue
+            }
+
+            $shortcuts = Get-ChildItem -Path $desktopPath -Filter "*.lnk" -File -ErrorAction SilentlyContinue
+
+            if (-not $shortcuts) {
+                Write-Host "INFO: No desktop shortcuts found in: $desktopPath"
+                continue
+            }
+
+            foreach ($shortcut in $shortcuts) {
+                try {
+                    Remove-Item -Path $shortcut.FullName -Force -ErrorAction Stop
+                    Write-Host "PASS: Removed desktop shortcut: $($shortcut.FullName)"
+                } catch {
+                    Write-Host "WARN: Could not remove desktop shortcut $($shortcut.FullName): $($_.Exception.Message)"
+                }
+            }
+        }
+
+        try {
+            if (-not (Test-Path $wallpaperFolder)) {
+                New-Item -Path $wallpaperFolder -ItemType Directory -Force | Out-Null
+            }
+
+            Invoke-WebRequest -Uri $WallpaperUrl -OutFile $wallpaperPath -UseBasicParsing -ErrorAction Stop
+            Write-Host "PASS: Wallpaper downloaded: $wallpaperPath"
+        } catch {
+            Write-Host "WARN: Could not download wallpaper: $($_.Exception.Message)"
+            return
+        }
+
+        try {
+            New-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -Value $wallpaperPath -PropertyType String -Force | Out-Null
+
+            if (-not ("ZeroWinWallpaper" -as [type])) {
+                Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class ZeroWinWallpaper {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+}
+"@
+            }
+
+            $result = [ZeroWinWallpaper]::SystemParametersInfo(20, 0, $wallpaperPath, 3)
+
+            if ($result) {
+                Write-Host "PASS: Wallpaper applied."
+            } else {
+                Write-Host "WARN: Wallpaper registry value was set, but Windows did not report a successful refresh."
+            }
+        } catch {
+            Write-Host "WARN: Could not apply wallpaper: $($_.Exception.Message)"
         }
     }
 }
@@ -1070,6 +1149,7 @@ Disable-AppAutoStartEntries
 Write-Stage "STAGE 02: Buildup"
 Install-Chrome
 Set-ChromeDefaults
+Set-ZeroWinDesktop
 Show-FileExtensions
 Show-HiddenFiles
 Disable-MouseAcceleration
@@ -1107,6 +1187,26 @@ if (Test-Path $chromeDefaultsXmlPath) {
     Write-SummaryItem -Status "PASS" -Message "Chrome default associations XML found: $chromeDefaultsXmlPath"
 } else {
     Write-SummaryItem -Status "INFO" -Message "Chrome default associations XML not found: $chromeDefaultsXmlPath"
+}
+
+$desktopAdvanced = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -ErrorAction SilentlyContinue
+if ($desktopAdvanced.HideIcons -eq 1) {
+    Write-SummaryItem -Status "PASS" -Message "Desktop icons hidden setting is enabled"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Desktop icons hidden setting is not enabled"
+}
+
+$wallpaperPath = Join-Path (Join-Path $env:TEMP "zerowin-bootstrap") "wallpaper.png"
+if (Test-Path $wallpaperPath) {
+    Write-SummaryItem -Status "PASS" -Message "ZeroWin wallpaper file found: $wallpaperPath"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "ZeroWin wallpaper file not found: $wallpaperPath"
+}
+
+if ($script:DesktopShortcutCleanupAttempted) {
+    Write-SummaryItem -Status "INFO" -Message "Desktop shortcut cleanup attempted"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Desktop shortcut cleanup did not run"
 }
 
 $oneDriveSetupPaths = @(
