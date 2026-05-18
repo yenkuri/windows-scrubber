@@ -858,11 +858,60 @@ function Remove-XboxGamingFeatures {
     }
 }
 
+function Enable-RemoteDesktop {
+    Invoke-Tweak "Enable Remote Desktop" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to enable Remote Desktop."
+            return
+        }
+
+        $edition = (Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue).OperatingSystemSKU
+        $caption = (Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue).Caption
+
+        if ($caption -match "Home") {
+            Write-Host "WARN: Remote Desktop host may not be supported on Windows Home editions."
+        } elseif ($caption) {
+            Write-Host "INFO: Windows edition detected: $caption"
+        } elseif ($edition) {
+            Write-Host "INFO: Windows edition SKU detected: $edition"
+        }
+
+        try {
+            Set-RegistryDword -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+            Write-Host "PASS: Remote Desktop connections enabled."
+        } catch {
+            Write-Host "WARN: Could not enable Remote Desktop registry setting: $($_.Exception.Message)"
+        }
+
+        try {
+            Enable-NetFirewallRule -DisplayGroup "Remote Desktop" -ErrorAction Stop | Out-Null
+            Write-Host "PASS: Remote Desktop firewall rules enabled."
+        } catch {
+            Write-Host "WARN: Could not enable Remote Desktop firewall rules: $($_.Exception.Message)"
+        }
+
+        $disableNla = Read-Host "Disable Network Level Authentication for compatibility? (y/N)"
+
+        try {
+            if ($disableNla -in @("y", "Y")) {
+                Set-RegistryDword -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
+                Write-Host "WARN: Network Level Authentication disabled."
+            } else {
+                Set-RegistryDword -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
+                Write-Host "PASS: Network Level Authentication enabled."
+            }
+        } catch {
+            Write-Host "WARN: Could not update Network Level Authentication setting: $($_.Exception.Message)"
+        }
+    }
+}
+
 function Show-OptionalModulesMenu {
     Write-Stage "OPTIONAL MODULES"
     Write-Host "1. Remove Xbox / Game Bar / Game DVR packages and disable capture features"
     Write-Host "2. Aggressive Microsoft Store app cleanup"
     Write-Host "3. Aggressive Edge cleanup placeholder"
+    Write-Host "4. Enable Remote Desktop"
     Write-Host "Q. Quit"
 }
 
@@ -875,6 +924,7 @@ function Invoke-OptionalModulesMenu {
             "1" { Remove-XboxGamingFeatures }
             "2" { Write-Host "INFO: Not implemented yet." }
             "3" { Write-Host "INFO: Not implemented yet." }
+            "4" { Enable-RemoteDesktop }
             "Q" { Write-Host "INFO: Optional modules skipped."; return }
             "q" { Write-Host "INFO: Optional modules skipped."; return }
             "" { Write-Host "INFO: Optional modules skipped."; return }
@@ -1018,6 +1068,22 @@ if ($copilotPolicy.TurnOffWindowsCopilot -eq 1) {
     Write-SummaryItem -Status "PASS" -Message "Copilot disabled registry value found"
 } else {
     Write-SummaryItem -Status "WARN" -Message "Copilot disabled registry value not found"
+}
+
+$terminalServerSettings = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -ErrorAction SilentlyContinue
+if ($terminalServerSettings.fDenyTSConnections -eq 0) {
+    Write-SummaryItem -Status "INFO" -Message "Remote Desktop appears enabled"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Remote Desktop appears disabled"
+}
+
+$rdpTcpSettings = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -ErrorAction SilentlyContinue
+if ($rdpTcpSettings.UserAuthentication -eq 1) {
+    Write-SummaryItem -Status "INFO" -Message "Remote Desktop Network Level Authentication appears enabled"
+} elseif ($rdpTcpSettings.UserAuthentication -eq 0) {
+    Write-SummaryItem -Status "WARN" -Message "Remote Desktop Network Level Authentication appears disabled"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Remote Desktop Network Level Authentication setting not found"
 }
 
 $xboxPackages = Get-AppxPackage -Name "Microsoft.Xbox*" -ErrorAction SilentlyContinue
