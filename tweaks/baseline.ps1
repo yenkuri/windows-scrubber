@@ -265,10 +265,41 @@ function Disable-AppAutoStartEntries {
     }
 }
 
+function Install-Chrome {
+    Invoke-Tweak "Install Google Chrome" {
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Skip "winget was not found. Google Chrome will not be installed."
+            return
+        }
+
+        & winget install --id Google.Chrome --exact --accept-source-agreements --accept-package-agreements --silent
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Google Chrome install completed successfully."
+        } else {
+            Write-Skip "Google Chrome install did not complete successfully. winget exited with code $LASTEXITCODE."
+        }
+    }
+}
+
+function Prefer-IPv4OverIPv6 {
+    Invoke-Tweak "Prefer IPv4 over IPv6" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required for the HKLM IPv4 preference tweak."
+            return
+        }
+
+        # DisabledComponents = 32 prefers IPv4 over IPv6 but does not fully disable IPv6.
+        Set-RegistryDword -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 32
+    }
+}
+
 Disable-AdvertisingId
 Disable-TailoredExperiences
 Disable-FeedbackPrompts
 Disable-ActivityHistory
+Prefer-IPv4OverIPv6
+Install-Chrome
 Disable-StartMenuBingSearch
 Show-FileExtensions
 Show-HiddenFiles
