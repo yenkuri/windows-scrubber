@@ -149,6 +149,122 @@ function Disable-MouseAcceleration {
     }
 }
 
+function Disable-ConsumerFeatures {
+    Invoke-Tweak "Disable Consumer Features" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required for HKLM Consumer Features policy tweaks."
+            return
+        }
+
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableWindowsConsumerFeatures" -Value 1
+    }
+}
+
+function Disable-LocationTracking {
+    Invoke-Tweak "Disable Location Tracking" {
+        $userPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
+
+        if (-not (Test-Path $userPath)) {
+            New-Item -Path $userPath -Force | Out-Null
+        }
+
+        New-ItemProperty -Path $userPath -Name "Value" -Value "Deny" -PropertyType String -Force | Out-Null
+        Write-Host "Set $userPath\Value = Deny"
+
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required for HKLM Location policy tweaks."
+            return
+        }
+
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Name "DisableLocation" -Value 1
+    }
+}
+
+function Disable-Widgets {
+    Invoke-Tweak "Disable Widgets" {
+        try {
+            Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value 0
+        } catch {
+            Write-Skip "Could not set the HKCU Widgets taskbar value: $($_.Exception.Message)"
+        }
+
+        if (Test-IsAdmin) {
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Dsh" -Name "AllowNewsAndInterests" -Value 0
+        } else {
+            Write-Skip "Administrator rights are required for the HKLM Widgets policy tweak."
+            return
+        }
+    }
+}
+
+function Disable-Copilot {
+    Invoke-Tweak "Disable Copilot" {
+        Set-RegistryDword -Path "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot" -Name "TurnOffWindowsCopilot" -Value 1
+
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required for HKLM Copilot policy tweaks."
+            return
+        }
+
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name "TurnOffWindowsCopilot" -Value 1
+    }
+}
+
+function Disable-StartMenuRecommendations {
+    Invoke-Tweak "Disable Start Menu Recommendations" {
+        $advancedPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+        $contentPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+
+        Set-RegistryDword -Path $advancedPath -Name "Start_IrisRecommendations" -Value 0
+        Set-RegistryDword -Path $advancedPath -Name "Start_AccountNotifications" -Value 0
+        Set-RegistryDword -Path $contentPath -Name "SubscribedContent-338388Enabled" -Value 0
+        Set-RegistryDword -Path $contentPath -Name "SubscribedContent-338389Enabled" -Value 0
+    }
+}
+
+function Disable-TaskbarSearchIcon {
+    Invoke-Tweak "Disable Taskbar Search Icon" {
+        Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 0
+    }
+}
+
+function Disable-TaskbarTaskViewIcon {
+    Invoke-Tweak "Disable Taskbar Task View Icon" {
+        Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value 0
+    }
+}
+
+function Disable-AppAutoStartEntries {
+    Invoke-Tweak "Disable app auto-start entries for known annoying apps" {
+        $startupNames = @(
+            "Discord",
+            "Steam",
+            "OneDrive",
+            "MicrosoftEdgeAutoLaunch",
+            "MicrosoftEdgeUpdate",
+            "Teams",
+            "Spotify",
+            "EpicGamesLauncher"
+        )
+
+        $userRunPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+        $machineRunPath = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run"
+
+        foreach ($startupName in $startupNames) {
+            Remove-RegistryValueIfExists -Path $userRunPath -Name $startupName
+        }
+
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to remove HKLM app auto-start entries."
+            return
+        }
+
+        foreach ($startupName in $startupNames) {
+            Remove-RegistryValueIfExists -Path $machineRunPath -Name $startupName
+        }
+    }
+}
+
 Disable-AdvertisingId
 Disable-TailoredExperiences
 Disable-FeedbackPrompts
@@ -157,3 +273,11 @@ Disable-StartMenuBingSearch
 Show-FileExtensions
 Show-HiddenFiles
 Disable-MouseAcceleration
+Disable-ConsumerFeatures
+Disable-LocationTracking
+Disable-Widgets
+Disable-Copilot
+Disable-StartMenuRecommendations
+Disable-TaskbarSearchIcon
+Disable-TaskbarTaskViewIcon
+Disable-AppAutoStartEntries
