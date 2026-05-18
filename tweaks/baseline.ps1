@@ -359,6 +359,100 @@ function Remove-OneDrive {
     }
 }
 
+function Remove-Edge {
+    Invoke-Tweak "Remove Microsoft Edge" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to remove Microsoft Edge."
+            return
+        }
+
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            Write-Host "Trying winget uninstall for Microsoft Edge..."
+            $wingetOutput = & winget uninstall --id Microsoft.Edge --exact --silent --accept-source-agreements 2>&1
+            $wingetExitCode = $LASTEXITCODE
+
+            if ($wingetExitCode -eq 0) {
+                Write-Host "winget uninstall for Microsoft Edge completed successfully."
+            } else {
+                Write-Skip "winget uninstall for Microsoft Edge exited with code $wingetExitCode."
+                if ($wingetOutput) {
+                    Write-Host ($wingetOutput -join "`n")
+                }
+            }
+        } else {
+            Write-Skip "winget was not found. Skipping winget uninstall for Microsoft Edge."
+        }
+
+        $edgeInstallerRoots = @(
+            (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application"),
+            (Join-Path $env:ProgramFiles "Microsoft\Edge\Application")
+        )
+
+        foreach ($root in $edgeInstallerRoots) {
+            if (-not (Test-Path $root)) {
+                Write-Host "Edge application path not found: $root"
+                continue
+            }
+
+            $setupFiles = Get-ChildItem -Path $root -Filter "setup.exe" -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -like "*\Installer\setup.exe" }
+
+            foreach ($setupFile in $setupFiles) {
+                Write-Host "Running Edge setup uninstaller: $($setupFile.FullName)"
+
+                try {
+                    $process = Start-Process -FilePath $setupFile.FullName -ArgumentList "--uninstall --system-level --verbose-logging --force-uninstall" -Wait -PassThru
+
+                    if ($process.ExitCode -eq 0) {
+                        Write-Host "Edge setup uninstaller completed successfully."
+                    } else {
+                        Write-Skip "Edge setup uninstaller exited with code $($process.ExitCode): $($setupFile.FullName)"
+                    }
+                } catch {
+                    Write-Skip "Could not run Edge setup uninstaller: $($setupFile.FullName). $($_.Exception.Message)"
+                }
+            }
+        }
+
+        $shortcutPaths = @(
+            (Join-Path ([Environment]::GetFolderPath("Desktop")) "Microsoft Edge.lnk"),
+            (Join-Path ([Environment]::GetFolderPath("CommonDesktopDirectory")) "Microsoft Edge.lnk"),
+            (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Microsoft Edge.lnk"),
+            (Join-Path ([Environment]::GetFolderPath("CommonStartMenu")) "Programs\Microsoft Edge.lnk"),
+            (Join-Path $env:AppData "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\Microsoft Edge.lnk")
+        )
+
+        foreach ($shortcutPath in $shortcutPaths) {
+            if (Test-Path $shortcutPath) {
+                try {
+                    Remove-Item -Path $shortcutPath -Force
+                    Write-Host "Removed shortcut: $shortcutPath"
+                } catch {
+                    Write-Skip "Could not remove shortcut: $shortcutPath. $($_.Exception.Message)"
+                }
+            } else {
+                Write-Host "Shortcut not found: $shortcutPath"
+            }
+        }
+
+        $edgeStartupNames = @(
+            "MicrosoftEdgeAutoLaunch",
+            "MicrosoftEdgeUpdate",
+            "Microsoft Edge"
+        )
+
+        foreach ($startupName in $edgeStartupNames) {
+            Remove-RegistryValueIfExists -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $startupName
+            Remove-RegistryValueIfExists -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $startupName
+        }
+
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate" -Name "CreateDesktopShortcutDefault" -Value 0
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate" -Name "RemoveDesktopShortcutDefault" -Value 1
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "HideFirstRunExperience" -Value 1
+        Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "ShowRecommendationsEnabled" -Value 0
+    }
+}
+
 function Prefer-IPv4OverIPv6 {
     Invoke-Tweak "Prefer IPv4 over IPv6" {
         if (-not (Test-IsAdmin)) {
@@ -387,6 +481,7 @@ Disable-StartMenuRecommendations
 Disable-Widgets
 Disable-Copilot
 Remove-OneDrive
+Remove-Edge
 Disable-AppAutoStartEntries
 
 Write-Stage "STAGE 02: Buildup"
