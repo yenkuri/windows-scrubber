@@ -1,4 +1,4 @@
-# ZeroWin Bootstrap
+# Windows Scrubber
 
 A fresh Windows setup and cleanup script for quickly turning a new install into a clean workstation.
 
@@ -7,14 +7,14 @@ A fresh Windows setup and cleanup script for quickly turning a new install into 
 Run this from PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/r4kk0/zerowin-bootstrap/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/install.ps1 | iex
 ```
 
-The launcher downloads the latest baseline script from this repository into `%TEMP%\zerowin-bootstrap\baseline.ps1`, sets execution policy bypass for the current PowerShell process only, and runs the baseline.
+The launcher downloads the latest baseline script from this repository into `%TEMP%\windows-scrubber\baseline.ps1`, sets execution policy bypass for the current PowerShell process only, and runs the baseline.
 
 ## What It Does
 
-ZeroWin Bootstrap runs a staged baseline:
+Windows Scrubber runs a staged baseline:
 
 - `STAGE 00: Preflight` checks Administrator status and `winget` availability.
 - `STAGE 01: Cleanout` applies privacy, search, recommendation, app startup, OneDrive, Edge, Start menu, and baseline Store app cleanup.

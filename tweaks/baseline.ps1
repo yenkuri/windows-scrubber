@@ -471,7 +471,7 @@ function Set-ChromeDefaults {
             return
         }
 
-        $associationsPath = Join-Path $env:TEMP "zerowin-default-apps.xml"
+        $associationsPath = Join-Path $env:TEMP "windows-scrubber-default-apps.xml"
         $associationsXml = @"
 <?xml version="1.0" encoding="UTF-8"?>
 <DefaultAssociations>
@@ -521,10 +521,10 @@ function Set-ChromeDefaults {
     }
 }
 
-function Set-ZeroWinDesktop {
-    Invoke-Tweak "Set ZeroWin desktop" {
-        $WallpaperUrl = "https://raw.githubusercontent.com/r4kk0/zerowin-bootstrap/main/assets/wallpaper.png"
-        $wallpaperFolder = Join-Path $env:TEMP "zerowin-bootstrap"
+function Set-WindowsScrubberDesktop {
+    Invoke-Tweak "Set Windows Scrubber desktop" {
+        $WallpaperUrl = "https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/assets/wallpaper.png"
+        $wallpaperFolder = Join-Path $env:TEMP "windows-scrubber"
         $wallpaperPath = Join-Path $wallpaperFolder "wallpaper.png"
 
         Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideIcons" -Value 1
@@ -574,19 +574,19 @@ function Set-ZeroWinDesktop {
         try {
             New-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -Value $wallpaperPath -PropertyType String -Force | Out-Null
 
-            if (-not ("ZeroWinWallpaper" -as [type])) {
+            if (-not ("WindowsScrubberWallpaper" -as [type])) {
                 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 
-public class ZeroWinWallpaper {
+public class WindowsScrubberWallpaper {
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
 }
 "@
             }
 
-            $result = [ZeroWinWallpaper]::SystemParametersInfo(20, 0, $wallpaperPath, 3)
+            $result = [WindowsScrubberWallpaper]::SystemParametersInfo(20, 0, $wallpaperPath, 3)
 
             if ($result) {
                 Write-Host "PASS: Wallpaper applied."
@@ -1231,7 +1231,7 @@ Disable-AppAutoStartEntries
 Write-Stage "STAGE 02: Buildup"
 Install-Chrome
 Set-ChromeDefaults
-Set-ZeroWinDesktop
+Set-WindowsScrubberDesktop
 Show-FileExtensions
 Show-HiddenFiles
 Disable-MouseAcceleration
@@ -1264,7 +1264,7 @@ if (Test-PathExists -Path $chromePaths) {
     Write-SummaryItem -Status "WARN" -Message "Chrome executable not found"
 }
 
-$chromeDefaultsXmlPath = Join-Path $env:TEMP "zerowin-default-apps.xml"
+$chromeDefaultsXmlPath = Join-Path $env:TEMP "windows-scrubber-default-apps.xml"
 if (Test-Path $chromeDefaultsXmlPath) {
     Write-SummaryItem -Status "PASS" -Message "Chrome default associations XML found: $chromeDefaultsXmlPath"
 } else {
@@ -1278,11 +1278,11 @@ if ($desktopAdvanced.HideIcons -eq 1) {
     Write-SummaryItem -Status "INFO" -Message "Desktop icons hidden setting is not enabled"
 }
 
-$wallpaperPath = Join-Path (Join-Path $env:TEMP "zerowin-bootstrap") "wallpaper.png"
+$wallpaperPath = Join-Path (Join-Path $env:TEMP "windows-scrubber") "wallpaper.png"
 if (Test-Path $wallpaperPath) {
-    Write-SummaryItem -Status "PASS" -Message "ZeroWin wallpaper file found: $wallpaperPath"
+    Write-SummaryItem -Status "PASS" -Message "Windows Scrubber wallpaper file found: $wallpaperPath"
 } else {
-    Write-SummaryItem -Status "INFO" -Message "ZeroWin wallpaper file not found: $wallpaperPath"
+    Write-SummaryItem -Status "INFO" -Message "Windows Scrubber wallpaper file not found: $wallpaperPath"
 }
 
 if ($script:DesktopShortcutCleanupAttempted) {

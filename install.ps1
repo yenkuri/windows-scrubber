@@ -1,10 +1,10 @@
 $ErrorActionPreference = "Stop"
 
-$BaselineUrl = "https://raw.githubusercontent.com/r4kk0/zerowin-bootstrap/main/tweaks/baseline.ps1"
-$DownloadRoot = Join-Path $env:TEMP "zerowin-bootstrap"
+$BaselineUrl = "https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/tweaks/baseline.ps1"
+$DownloadRoot = Join-Path $env:TEMP "windows-scrubber"
 $BaselinePath = Join-Path $DownloadRoot "baseline.ps1"
 
-Write-Host "ZeroWin Bootstrap launcher"
+Write-Host "Windows Scrubber launcher"
 Write-Host "Baseline URL: $BaselineUrl"
 Write-Host "Download path: $BaselinePath"
 
@@ -28,6 +28,6 @@ try {
     Write-Host "Running baseline script..."
     & $BaselinePath
 } catch {
-    Write-Error "ZeroWin launcher failed: $($_.Exception.Message)"
+    Write-Error "Windows Scrubber launcher failed: $($_.Exception.Message)"
     exit 1
 }
