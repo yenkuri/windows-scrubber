@@ -215,7 +215,13 @@ function Reset-StartMenuLayout {
             Write-Host "INFO: Registry path does not exist: $cloudStorePath"
         }
 
-        Write-Host "INFO: Restarting Explorer to refresh Start menu and taskbar."
+        Write-Host "INFO: Start Menu layout cleanup is best effort. Explorer restart, sign out, or reboot may be required before visual changes appear."
+    }
+}
+
+function Restart-ExplorerShell {
+    Invoke-Tweak "Restart Explorer shell" {
+        Write-Host "INFO: Restarting Explorer to refresh Start menu, desktop, and taskbar changes."
 
         try {
             Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
@@ -224,8 +230,6 @@ function Reset-StartMenuLayout {
         } catch {
             Write-Skip "Could not restart Explorer: $($_.Exception.Message)"
         }
-
-        Write-Host "INFO: Start Menu layout cleanup is best effort. Explorer restart, sign out, or reboot may be required before visual changes appear."
     }
 }
 

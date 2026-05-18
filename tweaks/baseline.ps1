@@ -110,6 +110,7 @@ Disable-MouseAcceleration
 Prefer-IPv4OverIPv6
 Disable-TaskbarSearchIcon
 Disable-TaskbarTaskViewIcon
+Restart-ExplorerShell
 
 Write-ScrubberStage "STAGE END: Summary"
 
