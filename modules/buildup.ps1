@@ -154,11 +154,27 @@ function Set-ChromeDefaults {
     }
 }
 
+function Set-WindowsDarkTheme {
+    Invoke-Tweak "Set Windows theme to dark" {
+        $personalizePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+
+        if (-not (Test-Path $personalizePath)) {
+            New-Item -Path $personalizePath -Force | Out-Null
+        }
+
+        Set-RegistryDword -Path $personalizePath -Name "AppsUseLightTheme" -Value 0
+        Set-RegistryDword -Path $personalizePath -Name "SystemUsesLightTheme" -Value 0
+        Write-Host "PASS: Windows app and system theme set to dark for current user."
+    }
+}
+
 function Set-WindowsScrubberDesktop {
     Invoke-Tweak "Set Windows Scrubber desktop" {
         $WallpaperUrl = "https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/assets/wallpaper.png"
         $wallpaperFolder = Join-Path $env:TEMP "windows-scrubber"
         $wallpaperPath = Join-Path $wallpaperFolder "wallpaper.png"
+
+        Set-WindowsDarkTheme
 
         Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideIcons" -Value 1
         Write-Host "PASS: Desktop icons hidden for current user."

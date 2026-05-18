@@ -27,7 +27,7 @@ Windows Scrubber runs in stages:
 
 - `STAGE 00: Preflight`: checks Administrator status and `winget`.
 - `STAGE 01: Cleanout`: applies privacy, search, recommendations, Start menu, Store bloat, Widgets, Copilot, OneDrive, Edge, startup, Store auto-update, and Windows Search indexing cleanup.
-- `STAGE 02: Buildup`: installs Chrome and 7-Zip, prepares Chrome defaults, sets desktop/wallpaper preferences, shows file extensions and hidden files, disables mouse acceleration, prefers IPv4, and applies taskbar preferences.
+- `STAGE 02: Buildup`: installs Chrome and 7-Zip, prepares Chrome defaults, sets desktop/wallpaper and dark theme preferences, shows file extensions and hidden files, disables mouse acceleration, prefers IPv4, and applies taskbar preferences.
 - `STAGE END: Summary`: prints PASS/WARN/INFO checks for the important bits.
 
 Some changes need Explorer restart, sign out, or a reboot before Windows fully shows them.
@@ -61,6 +61,7 @@ Optional tools are not part of the default baseline, and the risky ones ask befo
 - It is meant for fresh installs and rebuilds.
 - It does not delete user documents, downloads, images, or folders.
 - Desktop cleanup removes only `.lnk` shortcuts from the current and Public Desktop.
+- Desktop setup sets the current user's app and system theme to dark.
 - OneDrive removal does not delete files from OneDrive folders.
 - Edge cleanup preserves WebView2 Runtime and user browser data.
 - Microsoft Store, App Installer/winget, common system apps, and protected Windows components are intentionally preserved.

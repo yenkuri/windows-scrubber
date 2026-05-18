@@ -46,6 +46,13 @@ function Invoke-ScrubberSummary {
     } else {
         Write-SummaryItem -Status "INFO" -Message "Desktop icons hidden setting is not enabled"
     }
+
+    $themePersonalize = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -ErrorAction SilentlyContinue
+    if (($themePersonalize.AppsUseLightTheme -eq 0) -and ($themePersonalize.SystemUsesLightTheme -eq 0)) {
+        Write-SummaryItem -Status "PASS" -Message "Windows app and system theme are set to dark"
+    } else {
+        Write-SummaryItem -Status "INFO" -Message "Windows app and system theme are not both set to dark"
+    }
     
     $wallpaperPath = Join-Path (Join-Path $env:TEMP "windows-scrubber") "wallpaper.png"
     if (Test-Path $wallpaperPath) {
