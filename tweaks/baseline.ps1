@@ -619,15 +619,26 @@ function Stop-EdgeProcesses {
 function Invoke-EdgeWingetUninstall {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "Trying winget uninstall for Microsoft Edge..."
-        $wingetOutput = & winget uninstall --id Microsoft.Edge --exact --silent --accept-source-agreements 2>&1
+        $previousProgressPreference = $ProgressPreference
+        $ProgressPreference = "SilentlyContinue"
+
+        try {
+            $wingetOutput = & winget uninstall --id Microsoft.Edge --exact --silent --disable-interactivity --accept-source-agreements 2>&1
+        } finally {
+            $ProgressPreference = $previousProgressPreference
+        }
+
         $wingetExitCode = $LASTEXITCODE
+        $wingetText = ($wingetOutput | Out-String).Trim()
 
         if ($wingetExitCode -eq 0) {
             Write-Host "PASS: winget uninstall for Microsoft Edge completed successfully."
+        } elseif ($wingetText -match "No installed package found matching input criteria") {
+            Write-Host "INFO: Microsoft Edge is not installed via winget."
         } else {
             Write-Host "WARN: winget uninstall for Microsoft Edge exited with code $wingetExitCode."
-            if ($wingetOutput) {
-                Write-Host ($wingetOutput -join "`n")
+            if ($wingetText -and ($wingetText.Length -le 400)) {
+                Write-Host $wingetText
             }
         }
     } else {
