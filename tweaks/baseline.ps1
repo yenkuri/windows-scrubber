@@ -37,6 +37,43 @@ function Write-Stage {
     Write-Host ("-" * $Message.Length)
 }
 
+function Test-CommandExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Test-PathExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Path
+    )
+
+    foreach ($item in $Path) {
+        if ($item -and (Test-Path $item)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Write-SummaryItem {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("PASS", "WARN", "INFO")]
+        [string]$Status,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    Write-Host "${Status}: $Message"
+}
+
 function Set-RegistryDword {
     param(
         [Parameter(Mandatory = $true)]
@@ -492,3 +529,102 @@ Disable-MouseAcceleration
 Prefer-IPv4OverIPv6
 Disable-TaskbarSearchIcon
 Disable-TaskbarTaskViewIcon
+
+Write-Stage "STAGE END: Summary"
+
+if (Test-IsAdmin) {
+    Write-SummaryItem -Status "PASS" -Message "Running as Administrator"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Not running as Administrator"
+}
+
+if (Test-CommandExists -Name "winget") {
+    Write-SummaryItem -Status "PASS" -Message "winget available"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "winget not found"
+}
+
+$chromePaths = @(
+    (Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Google\Chrome\Application\chrome.exe")
+)
+
+if (Test-PathExists -Path $chromePaths) {
+    Write-SummaryItem -Status "PASS" -Message "Chrome found"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "Chrome executable not found"
+}
+
+$oneDriveSetupPaths = @(
+    (Join-Path $env:SystemRoot "System32\OneDriveSetup.exe"),
+    (Join-Path $env:SystemRoot "SysWOW64\OneDriveSetup.exe")
+)
+
+if (Test-PathExists -Path $oneDriveSetupPaths) {
+    Write-SummaryItem -Status "WARN" -Message "OneDrive setup executable still present"
+} else {
+    Write-SummaryItem -Status "PASS" -Message "OneDrive setup executable not found"
+}
+
+if (Get-Process -Name "OneDrive" -ErrorAction SilentlyContinue) {
+    Write-SummaryItem -Status "WARN" -Message "OneDrive process is running"
+} else {
+    Write-SummaryItem -Status "PASS" -Message "OneDrive process not running"
+}
+
+$edgePaths = @(
+    (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe")
+)
+
+if (Test-PathExists -Path $edgePaths) {
+    Write-SummaryItem -Status "WARN" -Message "Edge executable still present"
+} else {
+    Write-SummaryItem -Status "PASS" -Message "Edge executable not found"
+}
+
+$webView2Paths = @(
+    (Join-Path $env:ProgramFiles "Microsoft\EdgeWebView\Application\msedgewebview2.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\EdgeWebView\Application\msedgewebview2.exe")
+)
+
+if (Test-PathExists -Path $webView2Paths) {
+    Write-SummaryItem -Status "INFO" -Message "WebView2 Runtime present, preserved intentionally"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "WebView2 Runtime executable not found"
+}
+
+$ipv4Preference = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -ErrorAction SilentlyContinue).DisabledComponents
+if ($ipv4Preference -eq 32) {
+    Write-SummaryItem -Status "PASS" -Message "IPv4 preference registry value is set to 32"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "IPv4 preference registry value is not set to 32"
+}
+
+$explorerAdvanced = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -ErrorAction SilentlyContinue
+if ($explorerAdvanced.HideFileExt -eq 0) {
+    Write-SummaryItem -Status "PASS" -Message "File extensions are set to show"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "File extensions setting is not set to show"
+}
+
+if ($explorerAdvanced.Hidden -eq 1) {
+    Write-SummaryItem -Status "PASS" -Message "Hidden files are set to show"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "Hidden files setting is not set to show"
+}
+
+$searchSettings = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -ErrorAction SilentlyContinue
+$searchPolicy = Get-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -ErrorAction SilentlyContinue
+if (($searchSettings.BingSearchEnabled -eq 0) -or ($searchPolicy.DisableSearchBoxSuggestions -eq 1)) {
+    Write-SummaryItem -Status "PASS" -Message "Bing search disabled registry value found"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "Bing search disabled registry value not found"
+}
+
+$copilotPolicy = Get-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot" -ErrorAction SilentlyContinue
+if ($copilotPolicy.TurnOffWindowsCopilot -eq 1) {
+    Write-SummaryItem -Status "PASS" -Message "Copilot disabled registry value found"
+} else {
+    Write-SummaryItem -Status "WARN" -Message "Copilot disabled registry value not found"
+}
