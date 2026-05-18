@@ -226,6 +226,39 @@ function Disable-ConsumerFeatures {
     }
 }
 
+function Disable-StoreConsumerChurn {
+    Invoke-Tweak "Disable Store consumer app churn" {
+        if (Test-IsAdmin) {
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableWindowsConsumerFeatures" -Value 1
+            Write-Host "PASS: HKLM consumer feature policy applied."
+        } else {
+            Write-Skip "Administrator rights are required for HKLM consumer feature policy."
+        }
+
+        $contentPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+        $contentValues = @{
+            SilentInstalledAppsEnabled = 0
+            ContentDeliveryAllowed = 0
+            OemPreInstalledAppsEnabled = 0
+            PreInstalledAppsEnabled = 0
+            PreInstalledAppsEverEnabled = 0
+            SystemPaneSuggestionsEnabled = 0
+            "SubscribedContent-338388Enabled" = 0
+            "SubscribedContent-338389Enabled" = 0
+            "SubscribedContent-338393Enabled" = 0
+            "SubscribedContent-353694Enabled" = 0
+            "SubscribedContent-353696Enabled" = 0
+        }
+
+        foreach ($name in $contentValues.Keys) {
+            Set-RegistryDword -Path $contentPath -Name $name -Value $contentValues[$name]
+        }
+
+        Write-Host "PASS: Current-user Store consumer content settings applied."
+        Write-Host "INFO: Microsoft Store auto-updates are not disabled by baseline."
+    }
+}
+
 function Disable-LocationTracking {
     Invoke-Tweak "Disable Location Tracking" {
         $userPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
@@ -1265,6 +1298,31 @@ function Optimize-WindowsSearchIndexing {
     }
 }
 
+function Disable-StoreAutoUpdates {
+    Invoke-Tweak "Disable Microsoft Store auto-updates" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to disable Microsoft Store auto-updates."
+            return
+        }
+
+        Write-Host "WARN: Disabling Store auto-updates can reduce background churn, but may leave Store apps/App Installer components outdated."
+        $confirmation = Read-Host "Disable Microsoft Store auto-updates? (y/N)"
+
+        if ($confirmation -notin @("y", "Y")) {
+            Write-Host "INFO: Microsoft Store auto-update change cancelled."
+            return
+        }
+
+        try {
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore" -Name "AutoDownload" -Value 2
+            Write-Host "PASS: Microsoft Store auto-updates policy disabled."
+            Write-Host "INFO: Microsoft Store itself was not disabled or removed."
+        } catch {
+            Write-Host "WARN: Could not set Microsoft Store auto-updates policy: $($_.Exception.Message)"
+        }
+    }
+}
+
 function Show-OptionalModulesMenu {
     Write-Stage "OPTIONAL MODULES"
     Write-Host "1. Remove Xbox / Game Bar / Game DVR packages and disable capture features"
@@ -1274,6 +1332,7 @@ function Show-OptionalModulesMenu {
     Write-Host "5. Configure automatic local sign-in"
     Write-Host "7. Configure no-sleep power plan"
     Write-Host "8. Optimise Windows Search indexing"
+    Write-Host "9. Disable Microsoft Store auto-updates"
     Write-Host "Q. Quit"
 }
 
@@ -1290,6 +1349,7 @@ function Invoke-OptionalModulesMenu {
             "5" { Invoke-AutoLogonMenu }
             "7" { Set-NoSleepPowerPlan }
             "8" { Optimize-WindowsSearchIndexing }
+            "9" { Disable-StoreAutoUpdates }
             "Q" { Write-Host "INFO: Optional modules skipped."; return }
             "q" { Write-Host "INFO: Optional modules skipped."; return }
             "" { Write-Host "INFO: Optional modules skipped."; return }
@@ -1308,6 +1368,7 @@ Disable-TailoredExperiences
 Disable-FeedbackPrompts
 Disable-ActivityHistory
 Disable-ConsumerFeatures
+Disable-StoreConsumerChurn
 Disable-LocationTracking
 Disable-StartMenuBingSearch
 Disable-StartMenuRecommendations
@@ -1522,6 +1583,23 @@ if ($script:SearchIndexingOptimizationAttempted) {
     Write-SummaryItem -Status "INFO" -Message "Windows Search indexing optimisation attempted"
 } else {
     Write-SummaryItem -Status "INFO" -Message "Windows Search indexing optimisation did not run"
+}
+
+$cloudContentPolicy = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -ErrorAction SilentlyContinue
+$contentDeliverySettings = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -ErrorAction SilentlyContinue
+if (($cloudContentPolicy.DisableWindowsConsumerFeatures -eq 1) -or (($contentDeliverySettings.SilentInstalledAppsEnabled -eq 0) -and ($contentDeliverySettings.ContentDeliveryAllowed -eq 0))) {
+    Write-SummaryItem -Status "PASS" -Message "Consumer app provisioning cleanup appears applied"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Consumer app provisioning cleanup not fully detected"
+}
+
+$storePolicy = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore" -ErrorAction SilentlyContinue
+if ($storePolicy.AutoDownload -eq 2) {
+    Write-SummaryItem -Status "WARN" -Message "Microsoft Store auto-updates policy appears disabled"
+} elseif ($null -ne $storePolicy.AutoDownload) {
+    Write-SummaryItem -Status "INFO" -Message "Microsoft Store auto-updates policy configured with value $($storePolicy.AutoDownload)"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Microsoft Store auto-updates policy not configured"
 }
 
 $xboxPackages = Get-AppxPackage -Name "Microsoft.Xbox*" -ErrorAction SilentlyContinue
