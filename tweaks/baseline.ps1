@@ -1096,6 +1096,86 @@ function Invoke-AutoLogonMenu {
     }
 }
 
+function Invoke-PowerCfgCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Description,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    try {
+        $output = & powercfg @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+
+        if ($exitCode -eq 0) {
+            Write-Host "PASS: $Description"
+        } else {
+            Write-Host "WARN: $Description failed with exit code $exitCode."
+            $outputText = ($output | Out-String).Trim()
+
+            if ($outputText -and ($outputText.Length -le 400)) {
+                Write-Host $outputText
+            }
+        }
+    } catch {
+        Write-Host "WARN: $Description failed: $($_.Exception.Message)"
+    }
+}
+
+function Get-PowerCfgAcSetting {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Subgroup,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Setting
+    )
+
+    try {
+        $output = & powercfg /query SCHEME_CURRENT $Subgroup $Setting 2>&1
+        $text = $output -join "`n"
+        $match = [regex]::Match($text, "Current AC Power Setting Index:\s*0x([0-9a-fA-F]+)")
+
+        if ($match.Success) {
+            return [Convert]::ToInt32($match.Groups[1].Value, 16)
+        }
+    } catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Set-NoSleepPowerPlan {
+    Invoke-Tweak "Configure no-sleep power plan" {
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to configure no-sleep power settings."
+            return
+        }
+
+        Write-Host "WARN: This disables sleep, display timeout, and hibernation. Best for desktops/bench machines."
+        $confirmation = Read-Host "Apply no-sleep power settings? (y/N)"
+
+        if ($confirmation -notin @("y", "Y")) {
+            Write-Host "INFO: No-sleep power plan setup cancelled."
+            return
+        }
+
+        Invoke-PowerCfgCommand -Description "Hibernation disabled" -Arguments @("/hibernate", "off")
+        Invoke-PowerCfgCommand -Description "AC sleep timeout disabled" -Arguments @("/change", "standby-timeout-ac", "0")
+        Invoke-PowerCfgCommand -Description "DC sleep timeout disabled" -Arguments @("/change", "standby-timeout-dc", "0")
+        Invoke-PowerCfgCommand -Description "AC display timeout disabled" -Arguments @("/change", "monitor-timeout-ac", "0")
+        Invoke-PowerCfgCommand -Description "DC display timeout disabled" -Arguments @("/change", "monitor-timeout-dc", "0")
+        Invoke-PowerCfgCommand -Description "AC disk timeout disabled" -Arguments @("/change", "disk-timeout-ac", "0")
+        Invoke-PowerCfgCommand -Description "DC disk timeout disabled" -Arguments @("/change", "disk-timeout-dc", "0")
+        Invoke-PowerCfgCommand -Description "AC hybrid sleep disabled" -Arguments @("/setacvalueindex", "SCHEME_CURRENT", "SUB_SLEEP", "HYBRIDSLEEP", "0")
+        Invoke-PowerCfgCommand -Description "DC hybrid sleep disabled" -Arguments @("/setdcvalueindex", "SCHEME_CURRENT", "SUB_SLEEP", "HYBRIDSLEEP", "0")
+        Invoke-PowerCfgCommand -Description "Current power scheme applied" -Arguments @("/setactive", "SCHEME_CURRENT")
+    }
+}
+
 function Show-OptionalModulesMenu {
     Write-Stage "OPTIONAL MODULES"
     Write-Host "1. Remove Xbox / Game Bar / Game DVR packages and disable capture features"
@@ -1103,6 +1183,7 @@ function Show-OptionalModulesMenu {
     Write-Host "3. Aggressive Edge cleanup placeholder"
     Write-Host "4. Enable Remote Desktop"
     Write-Host "5. Configure automatic local sign-in"
+    Write-Host "7. Configure no-sleep power plan"
     Write-Host "Q. Quit"
 }
 
@@ -1117,6 +1198,7 @@ function Invoke-OptionalModulesMenu {
             "3" { Write-Host "INFO: Not implemented yet." }
             "4" { Enable-RemoteDesktop }
             "5" { Invoke-AutoLogonMenu }
+            "7" { Set-NoSleepPowerPlan }
             "Q" { Write-Host "INFO: Optional modules skipped."; return }
             "q" { Write-Host "INFO: Optional modules skipped."; return }
             "" { Write-Host "INFO: Optional modules skipped."; return }
@@ -1304,6 +1386,32 @@ if ($winlogonSettings.AutoAdminLogon -eq "1") {
     Write-SummaryItem -Status "WARN" -Message "Automatic local sign-in appears enabled"
 } else {
     Write-SummaryItem -Status "INFO" -Message "Automatic local sign-in appears disabled"
+}
+
+try {
+    $powerAvailability = (& powercfg /a 2>&1) -join "`n"
+
+    if ($powerAvailability -match "Hibernation has not been enabled|The hiberfile type does not support hibernation") {
+        Write-SummaryItem -Status "PASS" -Message "Hibernation appears disabled"
+    } else {
+        Write-SummaryItem -Status "INFO" -Message "Hibernation may be available or enabled"
+    }
+} catch {
+    Write-SummaryItem -Status "INFO" -Message "Could not check hibernation status"
+}
+
+$acStandbyTimeout = Get-PowerCfgAcSetting -Subgroup "SUB_SLEEP" -Setting "STANDBYIDLE"
+if ($null -ne $acStandbyTimeout) {
+    Write-SummaryItem -Status "INFO" -Message "Current AC standby timeout: $acStandbyTimeout seconds"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Current AC standby timeout could not be read"
+}
+
+$acMonitorTimeout = Get-PowerCfgAcSetting -Subgroup "SUB_VIDEO" -Setting "VIDEOIDLE"
+if ($null -ne $acMonitorTimeout) {
+    Write-SummaryItem -Status "INFO" -Message "Current AC monitor timeout: $acMonitorTimeout seconds"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Current AC monitor timeout could not be read"
 }
 
 $xboxPackages = Get-AppxPackage -Name "Microsoft.Xbox*" -ErrorAction SilentlyContinue
