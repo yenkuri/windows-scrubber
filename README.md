@@ -10,7 +10,7 @@ Run this from PowerShell:
 irm https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/install.ps1 | iex
 ```
 
-The launcher downloads the latest baseline script from this repository into `%TEMP%\windows-scrubber\baseline.ps1`, sets execution policy bypass for the current PowerShell process only, and runs the baseline.
+The launcher stages files under `%TEMP%\windows-scrubber\`, sets execution policy bypass for the current PowerShell process only, and runs the baseline. It downloads `tweaks/baseline.ps1` and `lib/helpers.ps1`; the baseline dot-sources helpers from `lib/helpers.ps1`.
 
 ## What It Does
 
