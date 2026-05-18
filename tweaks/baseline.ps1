@@ -1,4 +1,6 @@
 $ErrorActionPreference = "Stop"
+$script:StartMenuCleanupRan = $false
+$script:BaselineStoreBloatCleanupRan = $false
 
 function Test-IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -106,6 +108,20 @@ function Remove-RegistryValueIfExists {
     if ((Test-Path $Path) -and (Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue)) {
         Remove-ItemProperty -Path $Path -Name $Name -Force
         Write-Host "Removed $Path\$Name"
+    }
+}
+
+function Remove-RegistryKeyIfExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (Test-Path $Path) {
+        Remove-Item -Path $Path -Recurse -Force
+        Write-Host "Removed $Path"
+    } else {
+        Write-Host "INFO: Registry path does not exist: $Path"
     }
 }
 
@@ -267,6 +283,98 @@ function Disable-StartMenuRecommendations {
         Set-RegistryDword -Path $advancedPath -Name "Start_AccountNotifications" -Value 0
         Set-RegistryDword -Path $contentPath -Name "SubscribedContent-338388Enabled" -Value 0
         Set-RegistryDword -Path $contentPath -Name "SubscribedContent-338389Enabled" -Value 0
+    }
+}
+
+function Reset-StartMenuLayout {
+    Invoke-Tweak "Reset Start Menu layout" {
+        $script:StartMenuCleanupRan = $true
+
+        try {
+            Remove-RegistryKeyIfExists -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage"
+        } catch {
+            Write-Skip "Could not clean Start Menu registry path: $($_.Exception.Message)"
+        }
+
+        $cloudStorePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\Cache\DefaultAccount"
+
+        if (Test-Path $cloudStorePath) {
+            $startMenuKeys = Get-ChildItem -Path $cloudStorePath -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.PSChildName -match "start|tile|pinned" }
+
+            foreach ($key in $startMenuKeys) {
+                try {
+                    Remove-RegistryKeyIfExists -Path $key.PSPath
+                } catch {
+                    Write-Skip "Could not clean Start Menu registry path: $($key.PSPath). $($_.Exception.Message)"
+                }
+            }
+        } else {
+            Write-Host "INFO: Registry path does not exist: $cloudStorePath"
+        }
+
+        Write-Host "INFO: Start Menu layout cleanup is best effort and may require sign out or restart."
+    }
+}
+
+function Remove-BaselineStoreBloat {
+    Invoke-Tweak "Remove baseline Store bloat" {
+        $script:BaselineStoreBloatCleanupRan = $true
+
+        $targetPackageNames = @(
+            "Microsoft.LinkedIn",
+            "MicrosoftTeams",
+            "MSTeams",
+            "Microsoft.Getstarted",
+            "Microsoft.BingNews",
+            "Microsoft.BingWeather",
+            "Microsoft.WindowsFeedbackHub",
+            "Microsoft.MicrosoftSolitaireCollection",
+            "Clipchamp.Clipchamp"
+        )
+
+        foreach ($packageName in $targetPackageNames) {
+            $packages = Get-AppxPackage -Name $packageName -ErrorAction SilentlyContinue
+
+            if (-not $packages) {
+                Write-Host "INFO: Store app not installed for current user: $packageName"
+                continue
+            }
+
+            foreach ($package in $packages) {
+                try {
+                    Remove-AppxPackage -Package $package.PackageFullName -ErrorAction Stop
+                    Write-Host "PASS: Removed current-user Store app: $($package.Name)"
+                } catch {
+                    Write-Host "WARN: Could not remove current-user Store app $($package.Name): $($_.Exception.Message)"
+                }
+            }
+        }
+
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to remove provisioned Store bloat for future users."
+            return
+        }
+
+        $provisionedPackages = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+
+        foreach ($packageName in $targetPackageNames) {
+            $matches = $provisionedPackages | Where-Object { $_.DisplayName -eq $packageName }
+
+            if (-not $matches) {
+                Write-Host "INFO: Provisioned Store app not found: $packageName"
+                continue
+            }
+
+            foreach ($package in $matches) {
+                try {
+                    Remove-AppxProvisionedPackage -Online -PackageName $package.PackageName -ErrorAction Stop | Out-Null
+                    Write-Host "PASS: Removed provisioned Store app for future users: $($package.DisplayName)"
+                } catch {
+                    Write-Host "WARN: Could not remove provisioned Store app $($package.DisplayName): $($_.Exception.Message)"
+                }
+            }
+        }
     }
 }
 
@@ -638,6 +746,103 @@ function Prefer-IPv4OverIPv6 {
     }
 }
 
+function Remove-XboxGamingFeatures {
+    Invoke-Tweak "Remove Xbox / Game Bar / Game DVR features" {
+        Write-Host "WARN: This may remove Xbox apps, Game Bar, and recording/capture features."
+        $confirmation = Read-Host "Type REMOVE to continue"
+
+        if ($confirmation -ne "REMOVE") {
+            Write-Skip "Xbox / Game Bar removal was not confirmed."
+            return
+        }
+
+        Set-RegistryDword -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 0
+        Set-RegistryDword -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_FSEBehaviorMode" -Value 2
+        Set-RegistryDword -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Value 0
+
+        if (Test-IsAdmin) {
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Value 0
+        } else {
+            Write-Skip "Administrator rights are required for the HKLM Game DVR policy tweak."
+        }
+
+        $xboxPackagePatterns = @(
+            "Microsoft.Xbox*",
+            "Microsoft.GamingApp",
+            "Microsoft.XboxGamingOverlay",
+            "Microsoft.XboxGameOverlay",
+            "Microsoft.XboxIdentityProvider",
+            "Microsoft.XboxSpeechToTextOverlay"
+        )
+
+        foreach ($pattern in $xboxPackagePatterns) {
+            $packages = Get-AppxPackage -Name $pattern -ErrorAction SilentlyContinue
+
+            if (-not $packages) {
+                Write-Host "INFO: Xbox package not installed for current user: $pattern"
+                continue
+            }
+
+            foreach ($package in $packages) {
+                try {
+                    Remove-AppxPackage -Package $package.PackageFullName -ErrorAction Stop
+                    Write-Host "PASS: Removed current-user Xbox package: $($package.Name)"
+                } catch {
+                    Write-Host "WARN: Could not remove current-user Xbox package $($package.Name): $($_.Exception.Message)"
+                }
+            }
+        }
+
+        if (-not (Test-IsAdmin)) {
+            Write-Skip "Administrator rights are required to remove provisioned Xbox packages for future users."
+            return
+        }
+
+        $provisionedPackages = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+
+        foreach ($pattern in $xboxPackagePatterns) {
+            $matches = $provisionedPackages | Where-Object { $_.DisplayName -like $pattern }
+
+            if (-not $matches) {
+                Write-Host "INFO: Provisioned Xbox package not found: $pattern"
+                continue
+            }
+
+            foreach ($package in $matches) {
+                try {
+                    Remove-AppxProvisionedPackage -Online -PackageName $package.PackageName -ErrorAction Stop | Out-Null
+                    Write-Host "PASS: Removed provisioned Xbox package for future users: $($package.DisplayName)"
+                } catch {
+                    Write-Host "WARN: Could not remove provisioned Xbox package $($package.DisplayName): $($_.Exception.Message)"
+                }
+            }
+        }
+    }
+}
+
+function Show-OptionalModulesMenu {
+    Write-Stage "OPTIONAL MODULES"
+    Write-Host "1. Remove Xbox / Game Bar / Game DVR packages and disable capture features"
+    Write-Host "2. Aggressive Microsoft Store app cleanup"
+    Write-Host "3. Aggressive Edge cleanup placeholder"
+    Write-Host "Q. Quit"
+}
+
+function Invoke-OptionalModulesMenu {
+    Show-OptionalModulesMenu
+    $selection = Read-Host "Select optional module"
+
+    switch ($selection) {
+        "1" { Remove-XboxGamingFeatures }
+        "2" { Write-Host "INFO: Not implemented yet." }
+        "3" { Write-Host "INFO: Not implemented yet." }
+        "Q" { Write-Host "INFO: Optional modules skipped." }
+        "q" { Write-Host "INFO: Optional modules skipped." }
+        "" { Write-Host "INFO: Optional modules skipped." }
+        default { Write-Host "INFO: Invalid selection. Optional modules skipped." }
+    }
+}
+
 Write-Stage "STAGE 00: Preflight"
 Write-Host "Running as Administrator: $(Test-IsAdmin)"
 Write-Host "winget available: $([bool](Get-Command winget -ErrorAction SilentlyContinue))"
@@ -651,6 +856,8 @@ Disable-ConsumerFeatures
 Disable-LocationTracking
 Disable-StartMenuBingSearch
 Disable-StartMenuRecommendations
+Reset-StartMenuLayout
+Remove-BaselineStoreBloat
 Disable-Widgets
 Disable-Copilot
 Remove-OneDrive
@@ -772,3 +979,25 @@ if ($copilotPolicy.TurnOffWindowsCopilot -eq 1) {
 } else {
     Write-SummaryItem -Status "WARN" -Message "Copilot disabled registry value not found"
 }
+
+$xboxPackages = Get-AppxPackage -Name "Microsoft.Xbox*" -ErrorAction SilentlyContinue
+$gameBarPackages = Get-AppxPackage -Name "Microsoft.XboxGamingOverlay" -ErrorAction SilentlyContinue
+if ($xboxPackages -or $gameBarPackages) {
+    Write-SummaryItem -Status "INFO" -Message "Xbox/Game Bar packages appear present"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Xbox/Game Bar packages not found for current user"
+}
+
+if ($script:StartMenuCleanupRan) {
+    Write-SummaryItem -Status "PASS" -Message "Start menu cleanup ran"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Start menu cleanup did not run"
+}
+
+if ($script:BaselineStoreBloatCleanupRan) {
+    Write-SummaryItem -Status "PASS" -Message "Baseline Store bloat cleanup ran"
+} else {
+    Write-SummaryItem -Status "INFO" -Message "Baseline Store bloat cleanup did not run"
+}
+
+Invoke-OptionalModulesMenu
