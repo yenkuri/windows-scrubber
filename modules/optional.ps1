@@ -131,6 +131,20 @@ function Enable-RemoteDesktop {
     }
 }
 
+function Set-WakeSignInRequirement {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Required
+    )
+
+    $value = if ($Required) { "1" } else { "0" }
+    $state = if ($Required) { "enabled" } else { "disabled" }
+
+    Invoke-PowerCfgCommand -Description "AC wake sign-in requirement $state" -Arguments @("/setacvalueindex", "SCHEME_CURRENT", "SUB_NONE", "CONSOLELOCK", $value)
+    Invoke-PowerCfgCommand -Description "DC wake sign-in requirement $state" -Arguments @("/setdcvalueindex", "SCHEME_CURRENT", "SUB_NONE", "CONSOLELOCK", $value)
+    Invoke-PowerCfgCommand -Description "Current power scheme applied" -Arguments @("/setactive", "SCHEME_CURRENT")
+}
+
 function Enable-AutoLogon {
     Invoke-Tweak "Enable automatic local sign-in" {
         if (-not (Test-IsAdmin)) {
@@ -179,7 +193,12 @@ function Enable-AutoLogon {
             New-ItemProperty -Path $path -Name "DefaultPassword" -Value $plainPassword -PropertyType String -Force | Out-Null
             New-ItemProperty -Path $path -Name "DefaultDomainName" -Value $domainName -PropertyType String -Force | Out-Null
 
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device" -Name "DevicePasswordLessBuildVersion" -Value 0
+            Set-WakeSignInRequirement -Required $false
+
             Write-Host "PASS: Automatic local sign-in configured."
+            Write-Host "PASS: Windows passwordless-only sign-in requirement disabled for local automatic sign-in."
+            Write-Host "PASS: Password requirement after wake disabled for the current power scheme."
             Write-Host "INFO: Password was written to Winlogon registry values and was not printed."
         } catch {
             Write-Host "WARN: Could not configure automatic local sign-in: $($_.Exception.Message)"
@@ -212,7 +231,11 @@ function Disable-AutoLogon {
             Write-Host "PASS: Automatic local sign-in disabled."
 
             Remove-RegistryValueIfExists -Path $path -Name "DefaultPassword"
-            Write-Host "INFO: DefaultPassword removed if it was present."
+            Remove-RegistryValueIfExists -Path $path -Name "AutoLogonCount"
+            Remove-RegistryValueIfExists -Path $path -Name "ForceAutoLogon"
+            Set-RegistryDword -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device" -Name "DevicePasswordLessBuildVersion" -Value 2
+            Set-WakeSignInRequirement -Required $true
+            Write-Host "INFO: Auto-logon password and related override values were removed if present."
         } catch {
             Write-Host "WARN: Could not disable automatic local sign-in: $($_.Exception.Message)"
         }

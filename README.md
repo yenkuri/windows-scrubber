@@ -38,7 +38,7 @@ After the baseline, you can run extra tools from a menu:
 
 - Remove Xbox / Game Bar / Game DVR packages and disable capture features
 - Enable Remote Desktop
-- Configure automatic local sign-in
+- Configure automatic local sign-in, including local/offline account boot sign-in and wake sign-in requirements
 - Configure a no-sleep power plan
 - Leave the menu with `Q`, `q`, or Enter
 
@@ -62,6 +62,7 @@ Optional tools are not part of the default baseline, and the risky ones ask befo
 - It does not delete user documents, downloads, images, or folders.
 - Desktop cleanup removes only `.lnk` shortcuts from the current and Public Desktop.
 - Desktop setup sets the current user's app and system theme to dark.
+- Automatic local sign-in stores the account password in Winlogon registry values and disables wake sign-in for the current power scheme.
 - OneDrive removal does not delete files from OneDrive folders.
 - Edge cleanup preserves WebView2 Runtime and user browser data.
 - Microsoft Store, App Installer/winget, common system apps, and protected Windows components are intentionally preserved.

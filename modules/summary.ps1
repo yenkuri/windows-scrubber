@@ -163,6 +163,24 @@ function Invoke-ScrubberSummary {
     } else {
         Write-SummaryItem -Status "INFO" -Message "Automatic local sign-in appears disabled"
     }
+
+    $passwordlessDeviceSettings = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device" -ErrorAction SilentlyContinue
+    if ($passwordlessDeviceSettings.DevicePasswordLessBuildVersion -eq 0) {
+        Write-SummaryItem -Status "INFO" -Message "Windows passwordless-only sign-in requirement appears disabled"
+    } elseif ($passwordlessDeviceSettings.DevicePasswordLessBuildVersion -eq 2) {
+        Write-SummaryItem -Status "INFO" -Message "Windows passwordless-only sign-in requirement appears enabled"
+    } else {
+        Write-SummaryItem -Status "INFO" -Message "Windows passwordless-only sign-in requirement setting not found"
+    }
+
+    $wakeSignInRequirement = Get-PowerCfgAcSetting -Subgroup "SUB_NONE" -Setting "CONSOLELOCK"
+    if ($wakeSignInRequirement -eq 0) {
+        Write-SummaryItem -Status "INFO" -Message "AC wake sign-in requirement appears disabled"
+    } elseif ($wakeSignInRequirement -eq 1) {
+        Write-SummaryItem -Status "INFO" -Message "AC wake sign-in requirement appears enabled"
+    } else {
+        Write-SummaryItem -Status "INFO" -Message "Could not check AC wake sign-in requirement"
+    }
     
     try {
         $powerAvailability = (& powercfg /a 2>&1) -join "`n"
