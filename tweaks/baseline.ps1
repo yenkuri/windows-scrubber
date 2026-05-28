@@ -95,6 +95,8 @@ function Install-AppBundle {
     foreach ($app in $apps) {
         Install-WingetApp -AppName $app.Name -PackageId $app.Id
     }
+
+    Set-ChromeDefaults
 }
 
 function Invoke-FullCleanup {
@@ -125,9 +127,6 @@ function Invoke-FullCleanup {
 
     Write-ScrubberStage "STAGE 02: Buildup"
     Set-WindowsDarkTheme
-    Install-Chrome
-    Install-7Zip
-    Set-ChromeDefaults
     Set-WindowsScrubberDesktop
     Show-FileExtensions
     Show-HiddenFiles
@@ -151,6 +150,9 @@ function Show-MainMenu {
         Write-Host ""
         Write-Host "[1] Full cleanup / scrubber flow"
         Write-Host "[2] Install apps"
+        Write-Host "[3] Enable Remote Desktop"
+        Write-Host "[4] Configure automatic local sign-in"
+        Write-Host "[5] Configure no-sleep power plan"
         Write-Host "[Q] Quit"
 
         $selection = Read-Host "Choose an option"
@@ -163,6 +165,9 @@ function Show-MainMenu {
         switch ($selection) {
             "1" { Invoke-FullCleanup; return }
             "2" { Install-AppBundle }
+            "3" { Enable-RemoteDesktop }
+            "4" { Invoke-AutoLogonMenu }
+            "5" { Set-NoSleepPowerPlan }
             "Q" { Write-Host "INFO: See you next time! :)"; return }
             "q" { Write-Host "INFO: See you next time! :)"; return }
             default { Write-Host "INFO: Invalid selection. Choose an option or press Enter to quit." }

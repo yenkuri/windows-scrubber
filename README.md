@@ -41,15 +41,18 @@ Windows Scrubber exits cleanly with `Please run PowerShell as Administrator.` if
 
 1. Full cleanup / scrubber flow
 2. Install apps
+3. Enable Remote Desktop
+4. Configure automatic local sign-in
+5. Configure no-sleep power plan
 
 The full cleanup / scrubber flow runs the existing stages:
 
 - `STAGE 00: Preflight`: checks Administrator status and `winget`.
 - `STAGE 01: Cleanout`: applies privacy, search, recommendations, Start menu, Store bloat, Widgets, Copilot, OneDrive, Edge, startup, Store auto-update, and Windows Search indexing cleanup.
-- `STAGE 02: Buildup`: installs Chrome and 7-Zip, prepares Chrome defaults, sets desktop/wallpaper and dark theme preferences, shows file extensions and hidden files, disables mouse acceleration, prefers IPv4, and applies taskbar preferences.
+- `STAGE 02: Buildup`: sets desktop/wallpaper and dark theme preferences, shows file extensions and hidden files, disables mouse acceleration, prefers IPv4, and applies taskbar preferences.
 - `STAGE END: Summary`: prints PASS/WARN/INFO checks for the important bits.
 
-Some changes need Explorer restart, sign out, or a reboot before Windows fully shows them.
+The cleanup flow does not install apps. Some changes need Explorer restart, sign out, or a reboot before Windows fully shows them.
 
 The install apps option installs:
 
@@ -57,6 +60,8 @@ The install apps option installs:
 - 7-Zip
 - AltDrag
 - Discord
+
+The Remote Desktop, automatic local sign-in, and no-sleep power plan options are available directly from the main menu. Automatic local sign-in can enable or disable the saved local login configuration.
 
 ## Optional Extras
 
