@@ -53,6 +53,13 @@ function Invoke-ScrubberSummary {
     } else {
         Write-SummaryItem -Status "INFO" -Message "Windows app and system theme are not both set to dark"
     }
+
+    $mouseSettings = Get-ItemProperty -Path "HKCU:\Control Panel\Mouse" -ErrorAction SilentlyContinue
+    if (($mouseSettings.MouseSpeed -eq "0") -and ($mouseSettings.MouseThreshold1 -eq "0") -and ($mouseSettings.MouseThreshold2 -eq "0")) {
+        Write-SummaryItem -Status "PASS" -Message "Mouse acceleration registry values are disabled"
+    } else {
+        Write-SummaryItem -Status "WARN" -Message "Mouse acceleration registry values are not all disabled"
+    }
     
     $wallpaperPath = Join-Path (Join-Path $env:TEMP "windows-scrubber") "wallpaper.png"
     if (Test-Path $wallpaperPath) {

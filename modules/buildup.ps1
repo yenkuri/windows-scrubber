@@ -21,7 +21,27 @@ function Disable-MouseAcceleration {
         Set-ItemProperty -Path $path -Name "MouseSpeed" -Value "0" -Type String
         Set-ItemProperty -Path $path -Name "MouseThreshold1" -Value "0" -Type String
         Set-ItemProperty -Path $path -Name "MouseThreshold2" -Value "0" -Type String
-        Write-Host "Set mouse acceleration values to 0"
+
+        if (-not ("WindowsScrubberMouseSettings" -as [type])) {
+            Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class WindowsScrubberMouseSettings {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SystemParametersInfo(int uAction, int uParam, int[] lpvParam, int fuWinIni);
+}
+"@
+        }
+
+        $mouseSettings = [int[]](0, 0, 0)
+        $result = [WindowsScrubberMouseSettings]::SystemParametersInfo(4, 0, $mouseSettings, 3)
+
+        if ($result) {
+            Write-Host "PASS: Mouse acceleration disabled and active mouse settings refreshed."
+        } else {
+            Write-Host "WARN: Mouse acceleration registry values were set, but Windows did not report a successful refresh."
+        }
     }
 }
 
