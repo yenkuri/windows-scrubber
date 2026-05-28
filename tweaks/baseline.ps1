@@ -139,8 +139,6 @@ function Invoke-FullCleanup {
     Write-ScrubberStage "STAGE END: Summary"
 
     Invoke-ScrubberSummary
-
-    Invoke-OptionalModulesMenu
 }
 
 function Show-MainMenu {
@@ -163,7 +161,7 @@ function Show-MainMenu {
         }
 
         switch ($selection) {
-            "1" { Invoke-FullCleanup; return }
+            "1" { Invoke-FullCleanup }
             "2" { Install-AppBundle }
             "3" { Enable-RemoteDesktop }
             "4" { Invoke-AutoLogonMenu }
