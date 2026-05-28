@@ -1,6 +1,6 @@
 # Windows Scrubber
 
-A small PowerShell scrubber for fresh Windows installs. It cleans up noisy defaults, installs a few workstation basics, then offers optional extras you can run only if you want them.
+A small PowerShell scrubber for fresh Windows installs. It cleans up noisy defaults, installs a few workstation basics, then offers utility tools you can run only if you want them.
 
 ## Quick Run
 
@@ -34,6 +34,9 @@ It downloads only:
 - `modules/buildup.ps1`
 - `modules/optional.ps1`
 - `modules/summary.ps1`
+- `modules/full-cleanup.ps1`
+- `modules/app-bundle.ps1`
+- `modules/main-menu.ps1`
 
 ## What Happens
 
@@ -63,28 +66,30 @@ The install apps option installs:
 
 The Remote Desktop, automatic local sign-in, and no-sleep power plan options are available directly from the main menu. Automatic local sign-in can enable or disable the saved local login configuration.
 
-## Optional Extras
+## Utility Options
 
-After the baseline, you can run extra tools from a menu:
+The starting menu also includes utility tools:
 
-- Remove Xbox / Game Bar / Game DVR packages and disable capture features
 - Enable Remote Desktop
 - Configure automatic local sign-in, including local/offline account boot sign-in and wake sign-in requirements
 - Configure a no-sleep power plan
 - Leave the menu with `Q`, `q`, or Enter
 
-Optional tools are not part of the default baseline, and the risky ones ask before doing anything exciting.
+Utility tools are not part of the cleanup flow, and the risky ones ask before doing anything exciting.
 
 ## Project Layout
 
 - `index.html`: root GitHub Pages launcher for `install.ps1`.
 - `run`: compatibility GitHub Pages launcher for `install.ps1`.
 - `install.ps1`: remote launcher and temp staging.
-- `tweaks/baseline.ps1`: main menu, app bundle install, module loading, and cleanup stage order.
+- `tweaks/baseline.ps1`: entrypoint loader for helpers and modules.
 - `lib/helpers.ps1`: shared helper functions.
+- `modules/main-menu.ps1`: starting menu loop and menu routing.
+- `modules/full-cleanup.ps1`: full cleanup / scrubber flow.
+- `modules/app-bundle.ps1`: app bundle installation.
 - `modules/cleanout.ps1`: cleanup stage functions.
 - `modules/buildup.ps1`: setup/buildout stage functions.
-- `modules/optional.ps1`: optional menu and extra tools.
+- `modules/optional.ps1`: utility tools used by main menu options.
 - `modules/summary.ps1`: final summary checks.
 
 `baseline.ps1` loads helpers and modules with paths based on `$PSScriptRoot`, and fails clearly if a required file is missing.

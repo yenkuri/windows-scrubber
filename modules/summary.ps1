@@ -273,5 +273,5 @@ function Invoke-ScrubberSummary {
     
     Write-Host ""
     Write-Host "Standard scrub complete."
-    Write-Host "You can now run optional cleanup tools."
+    Write-Host "Returning to the Windows Scrubber menu."
 }

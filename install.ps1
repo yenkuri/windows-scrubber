@@ -44,6 +44,21 @@ $RequiredFiles = @(
         RelativePath = "modules/summary.ps1"
         Url = "$BaseUrl/modules/summary.ps1"
         Path = Join-Path $ModulesRoot "summary.ps1"
+    },
+    @{
+        RelativePath = "modules/full-cleanup.ps1"
+        Url = "$BaseUrl/modules/full-cleanup.ps1"
+        Path = Join-Path $ModulesRoot "full-cleanup.ps1"
+    },
+    @{
+        RelativePath = "modules/app-bundle.ps1"
+        Url = "$BaseUrl/modules/app-bundle.ps1"
+        Path = Join-Path $ModulesRoot "app-bundle.ps1"
+    },
+    @{
+        RelativePath = "modules/main-menu.ps1"
+        Url = "$BaseUrl/modules/main-menu.ps1"
+        Path = Join-Path $ModulesRoot "main-menu.ps1"
     }
 )
 
