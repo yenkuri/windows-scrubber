@@ -1,2 +1,1 @@
-$ErrorActionPreference = "Stop"
 irm https://git.yenkuri.com/install.ps1 | iex
