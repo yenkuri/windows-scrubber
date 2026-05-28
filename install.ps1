@@ -1,11 +1,18 @@
 $ErrorActionPreference = "Stop"
 
-$BaseUrl = "https://raw.githubusercontent.com/r4kk0/windows-scrubber/main"
+$BaseUrl = "https://git.yenkuri.com"
 $DownloadRoot = Join-Path $env:TEMP "windows-scrubber"
 $TweaksRoot = Join-Path $DownloadRoot "tweaks"
 $LibRoot = Join-Path $DownloadRoot "lib"
 $ModulesRoot = Join-Path $DownloadRoot "modules"
 $BaselinePath = Join-Path $TweaksRoot "baseline.ps1"
+
+function Test-IsAdmin {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
 
 $RequiredFiles = @(
     @{
@@ -45,6 +52,11 @@ Write-Host "Staging root: $DownloadRoot"
 Write-Host "Baseline path: $BaselinePath"
 
 try {
+    if (-not (Test-IsAdmin)) {
+        Write-Host "Please run PowerShell as Administrator."
+        exit 0
+    }
+
     foreach ($folder in @($DownloadRoot, $TweaksRoot, $LibRoot, $ModulesRoot)) {
         if (-not (Test-Path $folder)) {
             Write-Host "Creating folder: $folder"
@@ -65,8 +77,9 @@ try {
         }
     }
 
-    Write-Host "Running baseline script..."
-    & $BaselinePath
+    Write-Host "Opening Windows Scrubber menu..."
+    . $BaselinePath
+    Show-MainMenu
 } catch {
     Write-Error "Windows Scrubber launcher failed: $($_.Exception.Message)"
     exit 1

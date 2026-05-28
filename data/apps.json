@@ -1,9 +1,9 @@
 {
   "Core": [
     { "id": "Google.Chrome", "name": "Google Chrome" },
-    { "id": "Discord.Discord", "name": "Discord" },
     { "id": "7zip.7zip", "name": "7-Zip" },
-    { "id": "clsid2.mpc-hc", "name": "MPC-HC" }
+    { "id": "AltDrag.AltDrag", "name": "AltDrag" },
+    { "id": "Discord.Discord", "name": "Discord" }
   ],
   "Gaming": [
     { "id": "Valve.Steam", "name": "Steam" }

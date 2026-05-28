@@ -7,18 +7,24 @@ A small PowerShell scrubber for fresh Windows installs. It cleans up noisy defau
 Run from an elevated PowerShell session:
 
 ```powershell
-irm https://windows.yenkuri.com/run | iex
+irm https://git.yenkuri.com | iex
+```
+
+Compatibility alias:
+
+```powershell
+irm https://git.yenkuri.com/run | iex
 ```
 
 Explicit/full installer form:
 
 ```powershell
-irm https://windows.yenkuri.com/install.ps1 | iex
+irm https://git.yenkuri.com/install.ps1 | iex
 ```
 
-`/run` is only a tiny launcher endpoint. `install.ps1` remains the real installer, and PowerShell should be run as Administrator.
+The root endpoint and `/run` are only tiny launcher endpoints. `install.ps1` remains the real installer, and PowerShell should be run as Administrator.
 
-The installer stages the required files under `%TEMP%\windows-scrubber\`, keeps the same repo folder layout, sets execution policy bypass for the current PowerShell process only, then runs `tweaks/baseline.ps1`.
+The installer checks for Administrator rights, stages the required files under `%TEMP%\windows-scrubber\`, keeps the same repo folder layout, sets execution policy bypass for the current PowerShell process only, then opens the interactive menu.
 
 It downloads only:
 
@@ -31,7 +37,12 @@ It downloads only:
 
 ## What Happens
 
-Windows Scrubber runs in stages:
+Windows Scrubber exits cleanly with `Please run PowerShell as Administrator.` if PowerShell is not elevated. When run as Administrator, it opens a menu without running cleanup automatically:
+
+1. Full cleanup / scrubber flow
+2. Install apps
+
+The full cleanup / scrubber flow runs the existing stages:
 
 - `STAGE 00: Preflight`: checks Administrator status and `winget`.
 - `STAGE 01: Cleanout`: applies privacy, search, recommendations, Start menu, Store bloat, Widgets, Copilot, OneDrive, Edge, startup, Store auto-update, and Windows Search indexing cleanup.
@@ -39,6 +50,13 @@ Windows Scrubber runs in stages:
 - `STAGE END: Summary`: prints PASS/WARN/INFO checks for the important bits.
 
 Some changes need Explorer restart, sign out, or a reboot before Windows fully shows them.
+
+The install apps option installs:
+
+- Google Chrome
+- 7-Zip
+- AltDrag
+- Discord
 
 ## Optional Extras
 
@@ -54,9 +72,10 @@ Optional tools are not part of the default baseline, and the risky ones ask befo
 
 ## Project Layout
 
-- `run`: short GitHub Pages launcher for `install.ps1`.
+- `index.html`: root GitHub Pages launcher for `install.ps1`.
+- `run`: compatibility GitHub Pages launcher for `install.ps1`.
 - `install.ps1`: remote launcher and temp staging.
-- `tweaks/baseline.ps1`: entrypoint, prompts, module loading, and stage order.
+- `tweaks/baseline.ps1`: main menu, app bundle install, module loading, and cleanup stage order.
 - `lib/helpers.ps1`: shared helper functions.
 - `modules/cleanout.ps1`: cleanup stage functions.
 - `modules/buildup.ps1`: setup/buildout stage functions.
@@ -75,6 +94,6 @@ Optional tools are not part of the default baseline, and the risky ones ask befo
 - OneDrive removal does not delete files from OneDrive folders.
 - Edge cleanup preserves WebView2 Runtime and user browser data.
 - Microsoft Store, App Installer/winget, common system apps, and protected Windows components are intentionally preserved.
-- Non-admin runs skip admin-only changes where possible.
+- Non-admin runs exit before staging or making changes.
 
 Have a look through the scripts before running them on a machine you care about. Tiny bit boring, very worth it.
