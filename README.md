@@ -44,8 +44,9 @@ Windows Scrubber exits cleanly with `Please run PowerShell as Administrator.` if
 
 1. Full cleanup / scrubber flow
 2. Install apps
-3. Enable Remote Desktop
-4. Configure automatic local sign-in
+3. Install PC testing utilities
+4. Enable Remote Desktop
+5. Configure automatic local sign-in
 
 The full cleanup / scrubber flow runs the existing stages:
 
@@ -62,6 +63,16 @@ The install apps option installs:
 - 7-Zip
 - AltDrag
 - Discord
+
+The PC testing utilities option installs:
+
+- HWiNFO
+- GPU-Z
+- CPU-Z
+- Heaven Benchmark
+- FurMark v1
+- Cinebench R23
+- OCCT
 
 The Remote Desktop and automatic local sign-in options are available directly from the main menu. Automatic local sign-in can enable or disable the saved local login configuration.
 

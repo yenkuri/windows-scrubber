@@ -15,6 +15,17 @@
   ],
   "StressTest": [
     { "id": "Unigine.HeavenBenchmark", "name": "Unigine Heaven Benchmark" },
+    { "id": "Geeks3D.FurMark.1", "name": "FurMark v1" },
+    { "id": "Maxon.CinebenchR23", "name": "Cinebench R23" },
+    { "id": "OCBase.OCCT", "name": "OCCT" }
+  ],
+  "PcTesting": [
+    { "id": "REALiX.HWiNFO", "name": "HWiNFO" },
+    { "id": "TechPowerUp.GPU-Z", "name": "GPU-Z" },
+    { "id": "CPUID.CPU-Z", "name": "CPU-Z" },
+    { "id": "Unigine.HeavenBenchmark", "name": "Heaven Benchmark" },
+    { "id": "Geeks3D.FurMark.1", "name": "FurMark v1" },
+    { "id": "Maxon.CinebenchR23", "name": "Cinebench R23" },
     { "id": "OCBase.OCCT", "name": "OCCT" }
   ],
   "Dev": [

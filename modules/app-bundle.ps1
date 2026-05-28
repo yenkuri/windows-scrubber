@@ -38,19 +38,57 @@ function Install-WingetApp {
     }
 }
 
-function Install-AppBundle {
-    Write-ScrubberStage "Install apps"
+function Install-AppList {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
 
-    $apps = @(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Apps,
+
+        [switch]$SetChromeAsDefault
+    )
+
+    Write-ScrubberStage $Title
+
+    foreach ($app in $Apps) {
+        Install-WingetApp -AppName $app.Name -PackageId $app.Id
+    }
+
+    if ($SetChromeAsDefault) {
+        Set-ChromeDefaults
+    }
+}
+
+function Get-WorkstationApps {
+    return @(
         @{ Name = "Google Chrome"; Id = "Google.Chrome" },
         @{ Name = "7-Zip"; Id = "7zip.7zip" },
         @{ Name = "AltDrag"; Id = "AltDrag.AltDrag" },
         @{ Name = "Discord"; Id = "Discord.Discord" }
     )
+}
 
-    foreach ($app in $apps) {
-        Install-WingetApp -AppName $app.Name -PackageId $app.Id
-    }
+function Get-PcTestingUtilityApps {
+    return @(
+        @{ Name = "HWiNFO"; Id = "REALiX.HWiNFO" },
+        @{ Name = "GPU-Z"; Id = "TechPowerUp.GPU-Z" },
+        @{ Name = "CPU-Z"; Id = "CPUID.CPU-Z" },
+        @{ Name = "Heaven Benchmark"; Id = "Unigine.HeavenBenchmark" },
+        @{ Name = "FurMark v1"; Id = "Geeks3D.FurMark.1" },
+        @{ Name = "Cinebench R23"; Id = "Maxon.CinebenchR23" },
+        @{ Name = "OCCT"; Id = "OCBase.OCCT" }
+    )
+}
 
-    Set-ChromeDefaults
+function Install-WorkstationAppBundle {
+    Install-AppList -Title "Install workstation apps" -Apps (Get-WorkstationApps) -SetChromeAsDefault
+}
+
+function Install-PcTestingUtilityBundle {
+    Install-AppList -Title "Install PC testing utilities" -Apps (Get-PcTestingUtilityApps)
+}
+
+function Install-AppBundle {
+    Install-WorkstationAppBundle
 }
