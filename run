@@ -1,0 +1,2 @@
+$ErrorActionPreference = "Stop"
+irm https://windows.yenkuri.com/install.ps1 | iex

@@ -4,13 +4,21 @@ A small PowerShell scrubber for fresh Windows installs. It cleans up noisy defau
 
 ## Quick Run
 
-Run from PowerShell:
+Run from an elevated PowerShell session:
 
 ```powershell
-irm https://raw.githubusercontent.com/r4kk0/windows-scrubber/main/install.ps1 | iex
+irm https://windows.yenkuri.com/run | iex
 ```
 
-The launcher stages the required files under `%TEMP%\windows-scrubber\`, keeps the same repo folder layout, sets execution policy bypass for the current PowerShell process only, then runs `tweaks/baseline.ps1`.
+Explicit/full installer form:
+
+```powershell
+irm https://windows.yenkuri.com/install.ps1 | iex
+```
+
+`/run` is only a tiny launcher endpoint. `install.ps1` remains the real installer, and PowerShell should be run as Administrator.
+
+The installer stages the required files under `%TEMP%\windows-scrubber\`, keeps the same repo folder layout, sets execution policy bypass for the current PowerShell process only, then runs `tweaks/baseline.ps1`.
 
 It downloads only:
 
@@ -46,6 +54,7 @@ Optional tools are not part of the default baseline, and the risky ones ask befo
 
 ## Project Layout
 
+- `run`: short GitHub Pages launcher for `install.ps1`.
 - `install.ps1`: remote launcher and temp staging.
 - `tweaks/baseline.ps1`: entrypoint, prompts, module loading, and stage order.
 - `lib/helpers.ps1`: shared helper functions.
